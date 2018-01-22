@@ -2989,6 +2989,11 @@ paths:
           format: int32
           required: false
           description: the offset
+        - name: name
+          in: query
+          type: string
+          required: false
+          description: filter by state value
         - name: limit
           in: query
           type: integer

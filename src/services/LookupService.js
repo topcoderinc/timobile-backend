@@ -15,6 +15,7 @@ const schema = {
   filter: joi.object().keys({
     offset: joi.offset(),
     limit: joi.limit(),
+    name: joi.string(),
   }),
 };
 
@@ -24,7 +25,11 @@ const schema = {
  * @return states result
  */
 function* getAllStates(filter) {
-  const docs = yield models.State.findAndCountAll({ offset: filter.offset, limit: filter.limit });
+  let where = {};
+  if (filter.name) {
+    where = { value: { $like: `%${filter.name}%` } };
+  }
+  const docs = yield models.State.findAndCountAll({ where, offset: filter.offset, limit: filter.limit });
   return {
     items: docs.rows,
     total: docs.count,
