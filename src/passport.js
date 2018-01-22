@@ -48,15 +48,15 @@ const createAuthFunc = (authType, scope) => {
   const strategies = {
     facebook: FacebookStrategy,
   };
-  const Strategy = strategies[ authType ];
+  const Strategy = strategies[authType];
   const strategyEntity = {
-    clientID: config[ authType ].clientId,
-    clientSecret: config[ authType ].clientSecret,
+    clientID: config[authType].clientId,
+    clientSecret: config[authType].clientSecret,
     scope,
   };
   if (authType === 'facebook') {
     strategyEntity.profileFields = scope;
-    strategyEntity.profileFields = [ 'emails', 'displayName', 'picture.type(large)', 'name', 'profileUrl' ];
+    strategyEntity.profileFields = ['emails', 'displayName', 'picture.type(large)', 'name', 'profileUrl'];
   }
   return (req, res, next) => {
     passport.use(new Strategy(
@@ -109,9 +109,9 @@ const authCallback = (authType, req, res, next) => {
       };
       if (entity.username) {
         const names = entity.username.split(' ');
-        userEntity.firstName = names[ 0 ];
+        userEntity.firstName = names[0];
         if (names.length > 1) {
-          userEntity.lastName = names[ 1 ];
+          userEntity.lastName = names[1];
         }
       }
       user = yield models.User.create(userEntity);
@@ -133,7 +133,7 @@ const facebookCallback = (req, res, next) => {
 
 module.exports = {
   init: (app) => { // register passport auth uri
-    app.get(`/${config.API_VERSION}/auth/facebook`, createAuthFunc('facebook', [ 'email', 'user_photos', 'public_profile' ]));
+    app.get(`/${config.API_VERSION}/auth/facebook`, createAuthFunc('facebook', ['email', 'user_photos', 'public_profile']));
     app.get(`/${config.API_VERSION}/auth/facebook/callback`, passport.authenticate('facebook'), facebookCallback);
   },
 };
