@@ -132,10 +132,15 @@ function generateRandomString() {
  * Ensures there is one entity, and return it
  * @param Model the model
  * @param where the where clause
+ * @param include the include models
  * @returns {Object} the found entity
  */
-function* ensureExists(Model, where) {
-  const entity = yield Model.findOne({ where });
+function* ensureExists(Model, where, include) {
+  const query = { where };
+  if (include) {
+    query.include = include;
+  }
+  const entity = yield Model.findOne(query);
   if (!entity) {
     throw new errors.NotFoundError(`cannot find entity ${util.format(Model)} where: ${JSON.stringify(where)}`);
   }
