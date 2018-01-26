@@ -117,7 +117,8 @@ const authCallback = (authType, req, res, next) => {
       user = yield models.User.create(userEntity);
     }
     const userAuth = yield SecurityService.injectToken(user);
-    const redirectUrl = `${config.socialRedirectUrl}?accessToken=${userAuth.accessToken}&type=${authType}`;
+    const redirectUrl = `${config.socialRedirectUrl}?accessToken=${userAuth.accessToken}`
+      + `&accessTokenValidUntil=${userAuth.accessTokenValidUntil.getTime()}&type=${authType}`;
     res.redirect(redirectUrl);
   }).catch((err) => {
     next(err);
