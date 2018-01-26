@@ -237,7 +237,21 @@ function* buildDBFilter(filter) {
 
   const where = {};
   if (filter.title) where.title = { $like: `%${filter.title}%` };
-  if (filter.racetrackId) where.racetrackId = filter.racetrackId;
+
+  let racetrackIds = [];
+  if (filter.racetrackIds) {
+    racetrackIds = _.map(filter.racetrackIds.split(','), (str) => {
+      const id = Number(str);
+      if (!_.isInteger(id)) {
+        throw new errors.ArgumentError(`invalid racetrack id: ${str}`);
+      }
+      return id;
+    });
+  }
+  if (filter.racetrackId) racetrackIds.push(filter.racetrackId);
+  if (racetrackIds.length > 0) {
+    where.racetrackId = { $in: racetrackIds };
+  }
   if (filter.tagIds) {
     const ids = _.map(filter.tagIds.split(','), (tagIdStr) => {
       const tagId = Number(tagIdStr);
@@ -274,6 +288,7 @@ search.schema = {
   filter: joi.object().keys({
     title: joi.string(),
     racetrackId: joi.optionalId(),
+    racetrackIds: joi.string(),
     tagIds: joi.string(), // comma separated tag ids
     offset: joi.offset(),
     limit: joi.limit(),
