@@ -142,7 +142,7 @@ function* ensureExists(Model, where, include) {
   }
   const entity = yield Model.findOne(query);
   if (!entity) {
-    throw new errors.NotFoundError(`cannot find entity ${util.format(Model)} where: ${JSON.stringify(where)}`);
+    throw new errors.NotFoundError(`cannot find entity ${util.format(Model)}`);
   }
   return entity;
 }

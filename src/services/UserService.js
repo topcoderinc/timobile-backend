@@ -87,9 +87,9 @@ update.schema = {
   userId: joi.id(),
   id: joi.id(),
   entity: joi.object().keys({
-    firstName: joi.string().required(),
-    lastName: joi.string().required(),
-    email: joi.string().email().required(),
+    firstName: joi.string(),
+    lastName: joi.string(),
+    email: joi.string().email(),
     profilePhotoURL: joi.string(),
   }).required(),
 };

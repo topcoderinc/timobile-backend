@@ -268,20 +268,23 @@ function* buildDBFilter(filter) {
     offset: filter.offset,
     limit: filter.limit,
     order: [[filter.sortColumn, filter.sortOrder.toUpperCase()]],
+    distinct: true,
   };
 }
 
 /**
  * search track stories
  * @param filter the query filter
- * @return search result
  */
 function* search(filter) {
   const query = yield buildDBFilter(filter);
-  // when child entities are included, sequelize can not count the total items,
-  // so here it has no total field in the result
-  const items = yield models.TrackStory.findAll(query);
-  return { items, offset: filter.offset, limit: filter.limit };
+  const docs = yield models.TrackStory.findAndCountAll(query);
+  return {
+    items: docs.rows,
+    total: docs.count,
+    offset: filter.offset,
+    limit: filter.limit,
+  };
 }
 
 search.schema = {
