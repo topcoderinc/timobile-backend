@@ -20,20 +20,34 @@ const helper = require('../common/helper');
  */
 function* createBookmark(userId, racetrackId) {
   yield helper.ensureExists(models.Racetrack, { id: racetrackId });
-  const e = yield models.BookmarkedRacetrack.findOne({ userId, racetrackId });
+  const e = yield models.BookmarkedRacetrack.findOne({ where: { userId, racetrackId } });
   if (e) {
     throw new errors.ValidationError('the race track was already bookmarked');
   }
-  return yield models.BookmarkedRacetrack.create({
+  const bookMark = yield models.BookmarkedRacetrack.create({
     userId,
     racetrackId,
   });
+  return yield get(bookMark.id);
 }
 
 createBookmark.schema = {
   userId: joi.id(),
   racetrackId: joi.id(),
 };
+
+/**
+ * get bookmark by bookmark id
+ */
+function* get(id) {
+  return yield models.BookmarkedRacetrack.findOne({
+    where: { id },
+    include: [{
+      model: models.Racetrack,
+      as: 'racetrack',
+    }],
+  });
+}
 
 /**
  * remove bookmark

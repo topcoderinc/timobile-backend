@@ -20,7 +20,7 @@ const UserCardAndBadgeService = require('./UserCardAndBadgeService');
 const CommentService = require('./CommentService');
 const TrackStoryUserProgressService = require('./TrackStoryUserProgressService');
 const constants = require('../constants');
-
+const co = require('co');
 
 /**
  * get user by id
@@ -40,16 +40,19 @@ get.schema = { id: joi.id() };
  * @return created user
  */
 function* create(host, entity) {
-  entity.passwordHash = yield helper.hashString(entity.password);
-  delete entity.password;
-  entity.role = constants.UserRole.user;
-  entity.pointsAmount = 0;
-  entity.verified = false;
-  entity.verificationToken = helper.generateRandomString();
-  entity.verificationTokenValidUntil = new Date(new Date().getTime() + (config.VERIFY_TOKEN_EXPIRES * 1000));
-  const user = yield models.User.create(entity);
-  yield sendVerifyEmail(entity.email, entity.verificationToken, host);
-  return helper.toUserObject(user);
+  const userId = yield models.sequelize.transaction(transaction => co(function* () {
+    entity.passwordHash = yield helper.hashString(entity.password);
+    delete entity.password;
+    entity.role = constants.UserRole.user;
+    entity.pointsAmount = 0;
+    entity.verified = false;
+    entity.verificationToken = helper.generateRandomString();
+    entity.verificationTokenValidUntil = new Date(new Date().getTime() + (config.VERIFY_TOKEN_EXPIRES * 1000));
+    const user = yield models.User.create(entity, { transaction });
+    yield sendVerifyEmail(entity.email, entity.verificationToken, host);
+    return user.id;
+  }));
+  return yield get(userId);
 }
 
 create.schema = {
@@ -84,9 +87,9 @@ update.schema = {
   userId: joi.id(),
   id: joi.id(),
   entity: joi.object().keys({
-    firstName: joi.string().required(),
-    lastName: joi.string().required(),
-    email: joi.string().email().required(),
+    firstName: joi.string(),
+    lastName: joi.string(),
+    email: joi.string().email(),
     profilePhotoURL: joi.string(),
   }).required(),
 };

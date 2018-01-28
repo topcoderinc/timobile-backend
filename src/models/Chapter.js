@@ -16,6 +16,6 @@ module.exports = (sequelize, DataTypes) => sequelize.define('Chapter', {
   number: { type: DataTypes.INTEGER, allowNull: false },
   title: { type: DataTypes.STRING, allowNull: false },
   subtitle: DataTypes.STRING,
-  content: { type: DataTypes.STRING, allowNull: false },
+  content: { type: DataTypes.TEXT, allowNull: false },
   wordsCount: DataTypes.INTEGER,
 }, { timestamps: false });

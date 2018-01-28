@@ -129,7 +129,7 @@ function* search(filter) {
   }
   const sqlPart = `
       SELECT ${select}
-      FROM racetracks
+      FROM Racetracks
       ${where ? 'WHERE '.concat(where) : ''}
       ${havingClause || ''}
     `;

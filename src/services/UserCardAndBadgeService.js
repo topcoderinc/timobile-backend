@@ -20,7 +20,7 @@ const helper = require('../common/helper');
  * @return created entity
  */
 function* purchase(userId, cardId) {
-  return yield models.sequelize.transaction(t => co(function* () {
+  const userCard = yield models.sequelize.transaction(t => co(function* () {
     const user = yield helper.ensureExists(models.User, { id: userId });
     const card = yield helper.ensureExists(models.Card, { id: cardId });
     if (user.pointsAmount < card.pricePoints) {
@@ -30,6 +30,14 @@ function* purchase(userId, cardId) {
     yield user.save({ transaction: t });
     return yield models.UserCard.create({ userId, cardId }, { transaction: t });
   }));
+
+  return yield models.UserCard.findOne({
+    where: { id: userCard.id },
+    include: [{
+      model: models.Card,
+      as: 'card',
+    }]
+  });
 }
 
 purchase.schema = {

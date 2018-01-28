@@ -16,6 +16,11 @@ const _ = require('lodash');
 const helper = require('../common/helper');
 const TrackStoryService = require('./TrackStoryService');
 
+const progressInclude = [{
+  model: models.ChapterUserProgress,
+  as: 'chaptersUserProgress',
+}];
+
 /**
  * get or create progress
  * @param entity the entity
@@ -23,7 +28,7 @@ const TrackStoryService = require('./TrackStoryService');
  */
 function* getOrCreate(userId, trackStoryId) {
   yield helper.ensureExists(models.TrackStory, { id: trackStoryId });
-  const progress = yield models.TrackStoryUserProgress.findOne({ where: { userId, trackStoryId } });
+  const progress = yield models.TrackStoryUserProgress.findOne({ where: { userId, trackStoryId }, include: progressInclude, });
   if (progress) {
     return progress;
   }
@@ -65,10 +70,7 @@ function* update(id, entity) {
   }));
   return yield models.TrackStoryUserProgress.findOne({
     where: { id },
-    include: [{
-      model: models.ChapterUserProgress,
-      as: 'chaptersUserProgress',
-    }],
+    include: progressInclude,
   });
 }
 
@@ -96,7 +98,7 @@ update.schema = {
  * @param id the id that need to complete
  */
 function* complete(id) {
-  const e = yield helper.ensureExists(models.TrackStoryUserProgress, { id });
+  const e = yield helper.ensureExists(models.TrackStoryUserProgress, { id }, progressInclude);
   e.completed = true;
   return yield e.save();
 }
@@ -111,7 +113,7 @@ complete.schema = {
  */
 function* receiveRewards(id) {
   return yield models.sequelize.transaction(t => co(function* () {
-    const progress = yield helper.ensureExists(models.TrackStoryUserProgress, { id });
+    const progress = yield helper.ensureExists(models.TrackStoryUserProgress, { id }, progressInclude);
     if (!progress.completed) {
       throw new errors.ValidationError('the progress is incomplete');
     }
@@ -173,7 +175,7 @@ getAll.schema = {
  */
 function* completeAdditionalTask(id) {
   return yield models.sequelize.transaction(t => co(function* () {
-    const progress = yield helper.ensureExists(models.TrackStoryUserProgress, { id });
+    const progress = yield helper.ensureExists(models.TrackStoryUserProgress, { id }, progressInclude);
     if (progress.additionalTaskCompleted) {
       throw new errors.ValidationError('the additional task is already completed');
     }
