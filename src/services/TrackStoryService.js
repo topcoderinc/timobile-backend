@@ -15,6 +15,7 @@ const errors = require('common-errors');
 const _ = require('lodash');
 const helper = require('../common/helper');
 const constants = require('../constants');
+const geodist = require('geodist');
 
 const entitySchema = joi.object().keys({
   title: joi.string().required(),
@@ -207,10 +208,12 @@ function* get(id) {
       { model: models.Card, as: 'cards' },
       { model: models.Badge, as: 'badge' },
       { model: models.AdditionalTask, as: 'additionalTask' },
-      { model: models.Racetrack,
+      {
+        model: models.Racetrack,
         as: 'racetrack',
         include:
-        [{ model: models.State, as: 'state' }] }],
+          [{ model: models.State, as: 'state' }]
+      }],
   });
   if (!entity) {
     throw new errors.NotFoundError(`cannot find TrackStory where id = ${id}`);
@@ -230,10 +233,12 @@ function* buildDBFilter(filter) {
     { model: models.Card, as: 'cards' },
     { model: models.Badge, as: 'badge' },
     { model: models.AdditionalTask, as: 'additionalTask' },
-    { model: models.Racetrack,
+    {
+      model: models.Racetrack,
       as: 'racetrack',
       include:
-      [{ model: models.State, as: 'state' }] }];
+        [{ model: models.State, as: 'state' }]
+    }];
 
   const where = {};
   if (filter.title) where.title = { $like: `%${filter.title}%` };
@@ -262,14 +267,15 @@ function* buildDBFilter(filter) {
     });
     include[0].where = { id: { $in: ids } };
   }
-  return {
+  const query = {
     where,
     include,
-    offset: filter.offset,
-    limit: filter.limit,
-    order: [[filter.sortColumn, filter.sortOrder.toUpperCase()]],
     distinct: true,
   };
+  if (filter.sortColumn && filter.sortOrder && filter.sortColumn !== 'distance') {
+    query.order = [[filter.sortColumn, filter.sortOrder.toUpperCase()]];
+  }
+  return query;
 }
 
 /**
@@ -278,10 +284,29 @@ function* buildDBFilter(filter) {
  */
 function* search(filter) {
   const query = yield buildDBFilter(filter);
-  const docs = yield models.TrackStory.findAndCountAll(query);
+  let docs = yield models.TrackStory.findAll(query);
+
+  // sort by distance
+  if (filter.sortColumn === 'distance' && filter.sortOrder && filter.locationLat && filter.locationLng) {
+    docs = _.map(docs, d => d.toJSON());
+    const storiesHaveLocation = _.filter(docs, d => d.racetrack && d.racetrack.locationLat && d.racetrack.locationLng);
+    const storiesLocationNull = _.filter(docs, (d) => {
+      if (!d.racetrack) return true;
+      if (!d.racetrack.locationLat) return true;
+      return !d.racetrack.locationLng;
+    });
+    const currentPos = { lat: filter.locationLat, lon: filter.locationLng };
+    const getStoryPos = s => ({ lat: s.racetrack.locationLat, lon: s.racetrack.locationLng });
+    _.each(storiesHaveLocation, (s) => {
+      s.distance = geodist(currentPos, getStoryPos(s), { unit: 'meters' });
+    });
+    storiesHaveLocation.sort((a, b) => (a.distance - b.distance) * (filter.sortOrder.toUpperCase() === 'DESC' ? -1 : 1));
+    docs = storiesHaveLocation.concat(storiesLocationNull);
+  }
+
   return {
-    items: docs.rows,
-    total: docs.count,
+    items: docs.slice(filter.offset, filter.offset + filter.limit),
+    total: docs.length,
     offset: filter.offset,
     limit: filter.limit,
   };
@@ -295,7 +320,9 @@ search.schema = {
     tagIds: joi.string(), // comma separated tag ids
     offset: joi.offset(),
     limit: joi.limit(),
-    sortColumn: joi.string().valid('id', 'title', 'subtitle').default('id'),
+    locationLat: joi.number(),
+    locationLng: joi.number(),
+    sortColumn: joi.string().valid('id', 'title', 'subtitle', 'distance').default('id'),
     sortOrder: joi.sortOrder(),
   }),
 };

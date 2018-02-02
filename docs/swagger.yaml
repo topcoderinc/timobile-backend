@@ -567,7 +567,7 @@ paths:
     get:
       summary: Search Racetracks.
       description: |
-        Search Racetracks.
+        Search Racetracks. this can sort by 'id', 'name', 'distance', 'stateId', 'locality', 'street'
       tags:
         - Racetrack
       security:
@@ -1836,7 +1836,7 @@ paths:
     get:
       summary: Search TrackStories.
       description: |
-        Search TrackStories.
+        Search TrackStories. sortColumn can be 'id', 'title', 'subtitle','distance', if you want sort by 'distance',locationLat and locationLng must not be empty, the distance on response unit is meters
       tags:
         - TrackStory
       security:
@@ -1863,6 +1863,16 @@ paths:
           format: int32
           required: false
           description: the offset
+        - name: locationLat
+          in: query
+          type: number
+          required: false
+          description: the current location lat
+        - name: locationLng
+          in: query
+          type: number
+          required: false
+          description: the current location lng
         - name: limit
           in: query
           type: integer
