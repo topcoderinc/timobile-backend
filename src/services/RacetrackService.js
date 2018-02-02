@@ -13,6 +13,7 @@ const joi = require('joi');
 const errors = require('common-errors');
 const _ = require('lodash');
 const helper = require('../common/helper');
+const geodist = require('geodist');
 
 const entitySchema = joi.object().keys({
   name: joi.string().required(),
@@ -86,7 +87,7 @@ get.schema = { id: joi.id() };
 /**
  * search racetracks
  * @param filter the query filter
- * @return search result
+ * @return {items, total, offset, limit} result
  */
 function* search(filter) {
   if (filter.stateIds) {
@@ -133,17 +134,31 @@ function* search(filter) {
       ${where ? 'WHERE '.concat(where) : ''}
       ${havingClause || ''}
     `;
-  const sql = `
-      ${sqlPart}
-      ORDER BY ${filter.sortColumn} ${filter.sortOrder.toUpperCase()}
-      LIMIT ${filter.offset}, ${filter.limit};
-    `;
-  const countSql = `SELECT COUNT(*) as totalCount FROM ( ${sqlPart} ) AS a;`;
+  let sql = `
+      ${sqlPart}`;
+  if (filter.sortColumn && filter.sortOrder && filter.sortColumn !== 'distance') {
+    sql += ` ORDER BY ${filter.sortColumn} ${filter.sortOrder.toUpperCase()};`;
+  }
 
-  const items = yield models.sequelize.query(sql, { model: models.Racetrack });
-  const countRes = yield models.sequelize.query(countSql, { type: models.sequelize.QueryTypes.SELECT });
-  const total = (countRes && countRes.length > 0 && countRes[0].totalCount) || 0;
-  return { items, total, offset: filter.offset, limit: filter.limit };
+
+  let docs = yield models.sequelize.query(sql, { model: models.Racetrack });
+  docs = _.map(docs, d => d.toJSON());
+
+  if (filter.sortColumn === 'distance' && filter.sortOrder && filter.locationLat && filter.locationLng) {
+    const currentPos = { lat: filter.locationLat, lon: filter.locationLng };
+    const getPos = s => ({ lat: s.locationLat, lon: s.locationLng });
+    _.each(docs, (s) => {
+      s.distance = geodist(currentPos, getPos(s), { unit: 'meters' });
+    });
+    docs.sort((a, b) => (a.distance - b.distance) * (filter.sortOrder.toUpperCase() === 'DESC' ? -1 : 1));
+  }
+
+  return {
+    items: docs.slice(filter.offset, filter.offset + filter.limit),
+    total: docs.length,
+    offset: filter.offset,
+    limit: filter.limit
+  };
 }
 
 search.schema = {
@@ -155,7 +170,7 @@ search.schema = {
     locationLng: joi.number().min(-180).max(180),
     offset: joi.offset(),
     limit: joi.limit(),
-    sortColumn: joi.string().valid('id', 'name', 'stateId', 'locality', 'street').default('id'),
+    sortColumn: joi.string().valid('id', 'name', 'distance', 'stateId', 'locality', 'street').default('id'),
     sortOrder: joi.sortOrder(),
   }),
 };
